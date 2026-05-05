@@ -1,6 +1,8 @@
-using PharmacyExtra.Web.Components;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using PharmacyExtra.Web.Models;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>()
+app.MapRazorComponents<global::PharmacyExtra.Web.Components.App>()
     .AddInteractiveServerRenderMode();
 
 // Ensure database is created and optionally seed data at startup

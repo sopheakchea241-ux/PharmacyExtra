@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <!-- Reference the data project that contains EF provider, models and migrations -->
-    <ProjectReference Include="PharmacyExtra.Data.csproj" />
+    <ProjectReference Include="PharmacyExtra.Data\PharmacyExtra.Data.csproj" />
   </ItemGroup>
 
 </Project>
