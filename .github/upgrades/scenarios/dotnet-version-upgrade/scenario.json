@@ -3,8 +3,15 @@
   "operationId": "d9fabbaa-0379-4f2c-90f0-80668c9719b0",
   "description": "Upgrade .NET projects to newer .NET versions",
   "startTime": "2026-05-05T20:38:38.0580791Z",
-  "lastUpdateTime": "2026-05-05T20:38:38.0740856Z",
+  "lastUpdateTime": "2026-05-05T20:46:02.86716Z",
   "stage": "Assessment",
-  "properties": {},
+  "properties": {
+    "currentTask": "04-sqlclient-modernization",
+    "task:03-json-modernization:startedAt": "2026-05-05T20:44:56.2345235Z",
+    "UpgradeTargetFramework": "net10.0",
+    "task:04-sqlclient-modernization:startedAt": "2026-05-05T20:46:02.8671600Z",
+    "task:01-dotnet10-upgrade:startedAt": "2026-05-05T20:42:17.9694990Z",
+    "task:02-sdk-style-validation:startedAt": "2026-05-05T20:44:02.6535632Z"
+  },
   "folderPath": ""
 }
