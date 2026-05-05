@@ -1,0 +1,67 @@
+@page "/login"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Login</PageTitle>
+
+<h1>Login</h1>
+
+<p class="text-muted">Use demo account: <code>admin / admin123</code></p>
+
+<EditForm Model="_model" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Username</label>
+        <InputText class="form-control" @bind-Value="_model.Username" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText class="form-control" @bind-Value="_model.Password" type="password" />
+    </div>
+
+    <button class="btn btn-primary" type="submit">Sign in</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger mt-3" role="alert">@_error</div>
+}
+
+@code {
+    private LoginModel _model = new();
+    private string? _error;
+
+    private async Task HandleLogin()
+    {
+        _error = null;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/auth/login", new LoginRequest(
+                _model.Username ?? string.Empty,
+                _model.Password ?? string.Empty));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = "Invalid username or password.";
+                return;
+            }
+
+            Navigation.NavigateTo("/dashboard", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+    }
+
+    private sealed record LoginRequest(string Username, string Password);
+}

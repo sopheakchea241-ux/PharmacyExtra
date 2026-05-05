@@ -28,6 +28,7 @@
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\01-dotnet10-upgrade\progress-detail.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\02-sdk-style-validation\progress-detail.md" />
     <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\03-json-modernization\progress-detail.md" />
+    <None Include=".github\upgrades\scenarios\dotnet-version-upgrade\tasks\04-sqlclient-modernization\progress-detail.md" />
     <None Include=".github\workflows\ci.yml" />
   </ItemGroup>
 

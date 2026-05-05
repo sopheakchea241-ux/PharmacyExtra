@@ -1,0 +1,228 @@
+@page "/budget-sources"
+@attribute [Authorize(Policy = "CanEditMasterData")]
+@inject HttpClient Http
+
+<PageTitle>Budget Sources</PageTitle>
+
+<h1>Budget Sources</h1>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input class="form-control" placeholder="Search ID or name" @bind="_search" />
+    </div>
+    <div class="col-md-3">
+        <input class="form-control" placeholder="Type" @bind="_type" />
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" @bind="_pageSize">
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button class="btn btn-primary" @onclick="ApplyFiltersAsync">Apply</button>
+        <button class="btn btn-outline-secondary" @onclick="ResetFiltersAsync">Reset</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Create / Edit</h5>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input class="form-control" placeholder="BudgetSourceID" @bind="_form.BudgetSourceId" disabled="@_isEdit" />
+            </div>
+            <div class="col-md-5">
+                <input class="form-control" placeholder="Budget Source" @bind="_form.BudgetSource" />
+            </div>
+            <div class="col-md-2">
+                <input class="form-control" placeholder="Type" @bind="_form.BudgetSourceType" />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-success" @onclick="SaveAsync">@(_isEdit ? "Update" : "Create")</button>
+                <button class="btn btn-outline-secondary" @onclick="ClearForm">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_result is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span>Total: @_result.TotalCount</span>
+        <span>Page @_page of @TotalPages</span>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Budget Source</th>
+                <th>Type</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _result.Items)
+            {
+                <tr>
+                    <td>@item.BudgetSourceId</td>
+                    <td>@item.BudgetSource</td>
+                    <td>@item.BudgetSourceType</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Edit(item)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(item.BudgetSourceId)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" disabled="@(_page <= 1)" @onclick="PrevPageAsync">Prev</button>
+        <button class="btn btn-outline-secondary" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">Next</button>
+    </div>
+}
+
+@code {
+    private PagedResult<BudgetSourceDto>? _result;
+    private string _search = string.Empty;
+    private string _type = string.Empty;
+    private int _page = 1;
+    private int _pageSize = 10;
+    private string? _error;
+
+    private BudgetSourceFormModel _form = new();
+    private bool _isEdit;
+
+    private int TotalPages => _result is null || _result.TotalCount == 0
+        ? 1
+        : (int)Math.Ceiling((double)_result.TotalCount / _pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            var url = $"/api/budget-sources?search={Uri.EscapeDataString(_search)}&type={Uri.EscapeDataString(_type)}&page={_page}&pageSize={_pageSize}";
+            _result = await Http.GetFromJsonAsync<PagedResult<BudgetSourceDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ResetFiltersAsync()
+    {
+        _search = string.Empty;
+        _type = string.Empty;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PrevPageAsync()
+    {
+        if (_page <= 1) return;
+        _page--;
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_page >= TotalPages) return;
+        _page++;
+        await LoadAsync();
+    }
+
+    private void Edit(BudgetSourceDto item)
+    {
+        _isEdit = true;
+        _form = new BudgetSourceFormModel
+        {
+            BudgetSourceId = item.BudgetSourceId,
+            BudgetSource = item.BudgetSource,
+            BudgetSourceType = item.BudgetSourceType
+        };
+    }
+
+    private void ClearForm()
+    {
+        _isEdit = false;
+        _form = new BudgetSourceFormModel();
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        try
+        {
+            var dto = new BudgetSourceUpsertDto(_form.BudgetSourceId, _form.BudgetSource, _form.BudgetSourceType);
+
+            if (_isEdit)
+            {
+                var response = await Http.PutAsJsonAsync($"/api/budget-sources/{Uri.EscapeDataString(_form.BudgetSourceId)}", dto);
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                var response = await Http.PostAsJsonAsync("/api/budget-sources", dto);
+                response.EnsureSuccessStatusCode();
+            }
+
+            ClearForm();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        _error = null;
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/budget-sources/{Uri.EscapeDataString(id)}");
+            response.EnsureSuccessStatusCode();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed record BudgetSourceDto(string BudgetSourceId, string? BudgetSource, string? BudgetSourceType);
+    private sealed record BudgetSourceUpsertDto(string BudgetSourceId, string? BudgetSource, string? BudgetSourceType);
+    private sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
+
+    private sealed class BudgetSourceFormModel
+    {
+        public string BudgetSourceId { get; set; } = string.Empty;
+        public string? BudgetSource { get; set; }
+        public string? BudgetSourceType { get; set; }
+    }
+}

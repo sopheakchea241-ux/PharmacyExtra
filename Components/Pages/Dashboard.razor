@@ -1,0 +1,87 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject HttpClient Http
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Dashboard</h1>
+
+<p class="text-muted">Operational snapshot for core pharmacy data.</p>
+
+<button class="btn btn-outline-primary mb-3" @onclick="LoadAsync">Refresh</button>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger" role="alert">@_error</div>
+}
+
+@if (_summary is null)
+{
+    <p>Loading dashboard...</p>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Commodities</h6>
+                    <h3>@_summary.Commodities</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Budget Sources</h6>
+                    <h3>@_summary.BudgetSources</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Facilities</h6>
+                    <h3>@_summary.Facilities</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Main Transactions</h6>
+                    <h3>@_summary.MainTransactions</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <small class="text-muted">Generated: @_summary.GeneratedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</small>
+    </div>
+}
+
+@code {
+    private DashboardSummaryDto? _summary;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _summary = await Http.GetFromJsonAsync<DashboardSummaryDto>("/api/dashboard/summary");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed record DashboardSummaryDto(int Commodities, int BudgetSources, int Facilities, int MainTransactions, DateTimeOffset GeneratedAtUtc);
+}

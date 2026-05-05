@@ -1,0 +1,55 @@
+@page "/system-info"
+@attribute [Authorize]
+@inject HttpClient Http
+
+<PageTitle>System Info</PageTitle>
+
+<h1>System Info</h1>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_info is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <dl class="row">
+        <dt class="col-sm-3">Application</dt>
+        <dd class="col-sm-9">@_info.Application</dd>
+
+        <dt class="col-sm-3">Environment</dt>
+        <dd class="col-sm-9">@_info.Environment</dd>
+
+        <dt class="col-sm-3">Machine</dt>
+        <dd class="col-sm-9">@_info.MachineName</dd>
+
+        <dt class="col-sm-3">Runtime</dt>
+        <dd class="col-sm-9">@_info.Runtime</dd>
+
+        <dt class="col-sm-3">Generated (Local)</dt>
+        <dd class="col-sm-9">@_info.GeneratedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</dd>
+    </dl>
+}
+
+@code {
+    private SystemInfoDto? _info;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _info = await Http.GetFromJsonAsync<SystemInfoDto>("/api/system/info");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed record SystemInfoDto(string MachineName, string Environment, DateTimeOffset GeneratedAtUtc, string Runtime, string Application);
+}

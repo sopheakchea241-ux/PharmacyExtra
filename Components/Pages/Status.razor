@@ -7,8 +7,13 @@
 
 <p>This page checks application and database health endpoints.</p>
 
-<div class="mb-3">
+<div class="d-flex align-items-center gap-2 mb-3">
     <button class="btn btn-primary" @onclick="LoadStatus">Refresh</button>
+    <span class="badge @GetBadgeClass(_overallStatus)">@_overallStatus</span>
+    @if (_lastCheckedAt is not null)
+    {
+        <span class="text-muted small">Last checked: @_lastCheckedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</span>
+    }
 </div>
 
 @if (!string.IsNullOrWhiteSpace(_error))
@@ -19,7 +24,10 @@
 }
 
 <div class="card mb-3">
-    <div class="card-header">/health</div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>/health</span>
+        <span class="text-muted small">@FormatLatency(_healthLatencyMs)</span>
+    </div>
     <div class="card-body">
         @if (_healthJson is null)
         {
@@ -33,7 +41,10 @@
 </div>
 
 <div class="card">
-    <div class="card-header">/health/db</div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>/health/db</span>
+        <span class="text-muted small">@FormatLatency(_dbHealthLatencyMs)</span>
+    </div>
     <div class="card-body">
         @if (_dbHealthJson is null)
         {
@@ -50,6 +61,10 @@
     private string? _healthJson;
     private string? _dbHealthJson;
     private string? _error;
+    private string _overallStatus = "Unknown";
+    private DateTimeOffset? _lastCheckedAt;
+    private long? _healthLatencyMs;
+    private long? _dbHealthLatencyMs;
 
     protected override async Task OnInitializedAsync()
     {
@@ -59,26 +74,59 @@
     private async Task LoadStatus()
     {
         _error = null;
+        _overallStatus = "Healthy";
+
         try
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             _healthJson = await Http.GetStringAsync("/health");
+            sw.Stop();
+            _healthLatencyMs = sw.ElapsedMilliseconds;
+
+            if (_healthJson.Contains("Unhealthy", StringComparison.OrdinalIgnoreCase))
+            {
+                _overallStatus = "Unhealthy";
+            }
         }
         catch (Exception ex)
         {
             _healthJson = null;
+            _healthLatencyMs = null;
+            _overallStatus = "Unhealthy";
             _error = $"Failed to load /health: {ex.Message}";
         }
 
         try
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             _dbHealthJson = await Http.GetStringAsync("/health/db");
+            sw.Stop();
+            _dbHealthLatencyMs = sw.ElapsedMilliseconds;
+
+            if (_dbHealthJson.Contains("Unhealthy", StringComparison.OrdinalIgnoreCase))
+            {
+                _overallStatus = "Unhealthy";
+            }
         }
         catch (Exception ex)
         {
             _dbHealthJson = null;
+            _dbHealthLatencyMs = null;
+            _overallStatus = "Unhealthy";
             _error = string.IsNullOrWhiteSpace(_error)
                 ? $"Failed to load /health/db: {ex.Message}"
                 : _error + $" | Failed to load /health/db: {ex.Message}";
         }
+
+        _lastCheckedAt = DateTimeOffset.UtcNow;
     }
+
+    private static string FormatLatency(long? value) => value.HasValue ? $"{value.Value} ms" : "N/A";
+
+    private static string GetBadgeClass(string status)
+        => status.Equals("Healthy", StringComparison.OrdinalIgnoreCase)
+            ? "bg-success"
+            : status.Equals("Unhealthy", StringComparison.OrdinalIgnoreCase)
+                ? "bg-danger"
+                : "bg-secondary";
 }
