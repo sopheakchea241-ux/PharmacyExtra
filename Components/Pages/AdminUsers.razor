@@ -1,0 +1,379 @@
+@page "/admin/users"
+@attribute [Authorize(Policy = "AdminOnly")]
+@inject HttpClient Http
+
+<PageTitle>User Management</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="mb-0">User Management</h1>
+        <small class="text-muted">Professional administration of accounts and access rights.</small>
+    </div>
+    <button class="btn btn-primary" @onclick="NewUser">New User</button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input class="form-control" placeholder="Search user ID / description" @bind="_search" />
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="_roleCode">
+                    <option value="">All Roles</option>
+                    @foreach (var role in _roles)
+                    {
+                        <option value="@role.UserPermissionCode">@role.UserPermissionCode - @role.UserPermissionEnglish</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" @bind="_activeFilter">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-outline-primary" @onclick="ApplyFilterAsync">Apply</button>
+                <button class="btn btn-outline-secondary" @onclick="ResetFilterAsync">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        @if (_result is null)
+        {
+            <div class="card"><div class="card-body">Loading users...</div></div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Total users: @_result.TotalCount</span>
+                    <small class="text-muted">Page @_page of @TotalPages</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User ID</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Locked</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in _result.Items)
+                            {
+                                <tr class="@(user.UserId == _form.UserId ? "table-active" : null)">
+                                    <td>@user.UserId</td>
+                                    <td><span class="badge text-bg-info">@user.UserPermissionCode</span></td>
+                                    <td>
+                                        <span class="badge @(user.UserIsActive ? "text-bg-success" : "text-bg-secondary")">
+                                            @(user.UserIsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </td>
+                                    <td>@(user.UserIsLocked ? "Yes" : "No")</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(user)">Edit</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" disabled="@(_page <= 1)" @onclick="PrevPageAsync">Prev</button>
+                    <button class="btn btn-outline-secondary btn-sm" disabled="@(_page >= TotalPages)" @onclick="NextPageAsync">Next</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">@(_isEdit ? "Edit User" : "Create User")</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">User ID</label>
+                    <input class="form-control" @bind="_form.UserId" disabled="@_isEdit" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Role</label>
+                    <select class="form-select" @bind="_form.UserPermissionCode">
+                        <option value="">Select role</option>
+                        @foreach (var role in _roles)
+                        {
+                            <option value="@role.UserPermissionCode">@role.UserPermissionCode - @role.UserPermissionEnglish</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Password @(_isEdit ? "(optional)" : string.Empty)</label>
+                    <input class="form-control" type="password" @bind="_form.Password" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="2" @bind="_form.UserDescription"></textarea>
+                </div>
+
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" @bind="_form.UserIsActive" />
+                    <label class="form-check-label">Active</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" @bind="_form.UserIsLocked" />
+                    <label class="form-check-label">Locked</label>
+                </div>
+
+                <div class="small text-muted mb-2">Capabilities</div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <label><input type="checkbox" @bind="_form.AllowAccess" /> Access</label>
+                    <label><input type="checkbox" @bind="_form.AllowUpdate" /> Update</label>
+                    <label><input type="checkbox" @bind="_form.AllowDelete" /> Delete</label>
+                    <label><input type="checkbox" @bind="_form.AllowApprove" /> Approve</label>
+                    <label><input type="checkbox" @bind="_form.AllowPreview" /> Preview</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" @onclick="SaveAsync">@(_isEdit ? "Update" : "Create")</button>
+                    <button class="btn btn-outline-secondary" @onclick="NewUser">Clear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private PagedResult<UserAdminDto>? _result;
+    private List<RoleAdminDto> _roles = new();
+
+    private string _search = string.Empty;
+    private string _roleCode = string.Empty;
+    private string _activeFilter = string.Empty;
+    private int _page = 1;
+    private int _pageSize = 10;
+    private bool _isEdit;
+    private string? _error;
+
+    private UserFormModel _form = new();
+
+    private int TotalPages => _result is null || _result.TotalCount == 0
+        ? 1
+        : (int)Math.Ceiling((double)_result.TotalCount / _pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRolesAsync();
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<PagedResult<RoleAdminDto>>("/api/admin/roles?page=1&pageSize=100");
+            _roles = response?.Items.ToList() ?? new List<RoleAdminDto>();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _error = null;
+        try
+        {
+            var active = string.IsNullOrWhiteSpace(_activeFilter) ? string.Empty : $"&isActive={_activeFilter}";
+            var url = $"/api/admin/users?search={Uri.EscapeDataString(_search)}&roleCode={Uri.EscapeDataString(_roleCode)}{active}&page={_page}&pageSize={_pageSize}";
+            _result = await Http.GetFromJsonAsync<PagedResult<UserAdminDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        _page = 1;
+        await LoadUsersAsync();
+    }
+
+    private async Task ResetFilterAsync()
+    {
+        _search = string.Empty;
+        _roleCode = string.Empty;
+        _activeFilter = string.Empty;
+        _page = 1;
+        await LoadUsersAsync();
+    }
+
+    private async Task PrevPageAsync()
+    {
+        if (_page <= 1) return;
+        _page--;
+        await LoadUsersAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (_page >= TotalPages) return;
+        _page++;
+        await LoadUsersAsync();
+    }
+
+    private void NewUser()
+    {
+        _isEdit = false;
+        _form = new UserFormModel
+        {
+            UserIsActive = true,
+            AllowAccess = true,
+            AllowPreview = true
+        };
+    }
+
+    private void Edit(UserAdminDto user)
+    {
+        _isEdit = true;
+        _form = new UserFormModel
+        {
+            UserId = user.UserId,
+            UserPermissionCode = user.UserPermissionCode,
+            UserIsActive = user.UserIsActive,
+            UserIsLocked = user.UserIsLocked,
+            UserDescription = user.UserDescription,
+            AllowAccess = user.AllowAccess ?? false,
+            AllowDelete = user.AllowDelete ?? false,
+            AllowPreview = user.AllowPreview ?? false,
+            AllowApprove = user.AllowApprove ?? false,
+            AllowUpdate = user.AllowUpdate ?? false,
+            Password = string.Empty
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+
+        try
+        {
+            if (_isEdit)
+            {
+                var request = new UpdateUserRequest(
+                    _form.UserPermissionCode,
+                    _form.UserIsActive,
+                    _form.UserIsLocked,
+                    _form.UserDescription,
+                    _form.AllowAccess,
+                    _form.AllowDelete,
+                    _form.AllowPreview,
+                    _form.AllowApprove,
+                    _form.AllowUpdate,
+                    string.IsNullOrWhiteSpace(_form.Password) ? null : _form.Password);
+
+                var response = await Http.PutAsJsonAsync($"/api/admin/users/{Uri.EscapeDataString(_form.UserId)}", request);
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                var request = new CreateUserRequest(
+                    _form.UserId,
+                    _form.Password,
+                    _form.UserPermissionCode,
+                    _form.UserIsActive,
+                    _form.UserIsLocked,
+                    _form.UserDescription,
+                    _form.AllowAccess,
+                    _form.AllowDelete,
+                    _form.AllowPreview,
+                    _form.AllowApprove,
+                    _form.AllowUpdate);
+
+                var response = await Http.PostAsJsonAsync("/api/admin/users", request);
+                response.EnsureSuccessStatusCode();
+            }
+
+            await LoadUsersAsync();
+            NewUser();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class UserFormModel
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string UserPermissionCode { get; set; } = string.Empty;
+        public bool UserIsActive { get; set; }
+        public bool UserIsLocked { get; set; }
+        public string? UserDescription { get; set; }
+        public bool AllowAccess { get; set; }
+        public bool AllowDelete { get; set; }
+        public bool AllowPreview { get; set; }
+        public bool AllowApprove { get; set; }
+        public bool AllowUpdate { get; set; }
+    }
+
+    private sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
+
+    private sealed record UserAdminDto(
+        string UserId,
+        string UserPermissionCode,
+        bool UserIsActive,
+        bool UserIsLocked,
+        string? UserDescription,
+        bool? AllowAccess,
+        bool? AllowDelete,
+        bool? AllowPreview,
+        bool? AllowApprove,
+        bool? AllowUpdate);
+
+    private sealed record RoleAdminDto(
+        int UserPermissionId,
+        string UserPermissionCode,
+        string UserPermissionEnglish,
+        string UserPermissionKhmer,
+        bool UserPermissionIsActived,
+        string? UserPermissionDescription);
+
+    private sealed record CreateUserRequest(
+        string UserId,
+        string Password,
+        string UserPermissionCode,
+        bool UserIsActive,
+        bool UserIsLocked,
+        string? UserDescription,
+        bool? AllowAccess,
+        bool? AllowDelete,
+        bool? AllowPreview,
+        bool? AllowApprove,
+        bool? AllowUpdate);
+
+    private sealed record UpdateUserRequest(
+        string UserPermissionCode,
+        bool UserIsActive,
+        bool UserIsLocked,
+        string? UserDescription,
+        bool? AllowAccess,
+        bool? AllowDelete,
+        bool? AllowPreview,
+        bool? AllowApprove,
+        bool? AllowUpdate,
+        string? Password);
+}

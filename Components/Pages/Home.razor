@@ -1,7 +1,129 @@
 ﻿@page "/"
+@inject HttpClient Http
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="mb-0">Pharmacy Extra Control Center</h1>
+        <small class="text-muted">Welcome to the operational frontend for pharmacy management.</small>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadAsync">Refresh</button>
+</div>
 
-Welcome to your new app.
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <small class="text-uppercase text-muted">Commodities</small>
+                <h3 class="mb-0">@(_summary?.Commodities ?? 0)</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <small class="text-uppercase text-muted">Budget Sources</small>
+                <h3 class="mb-0">@(_summary?.BudgetSources ?? 0)</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <small class="text-uppercase text-muted">Facilities</small>
+                <h3 class="mb-0">@(_summary?.Facilities ?? 0)</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <small class="text-uppercase text-muted">Main Transactions</small>
+                <h3 class="mb-0">@(_summary?.MainTransactions ?? 0)</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white">Quick Shortcuts</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="dashboard">Open Dashboard</a>
+                <a class="btn btn-outline-primary" href="budget-sources">Budget Sources</a>
+                <a class="btn btn-outline-secondary" href="status">System Status</a>
+                <AuthorizeView Policy="AdminOnly">
+                    <a class="btn btn-outline-primary" href="admin/users">User Management</a>
+                    <a class="btn btn-outline-primary" href="admin/roles">Role Management</a>
+                </AuthorizeView>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white">System Snapshot</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-5">Environment</dt>
+                    <dd class="col-7">@(_systemInfo?.Environment ?? "-")</dd>
+
+                    <dt class="col-5">Machine</dt>
+                    <dd class="col-7">@(_systemInfo?.MachineName ?? "-")</dd>
+
+                    <dt class="col-5">Runtime</dt>
+                    <dd class="col-7">@(_systemInfo?.Runtime ?? "-")</dd>
+
+                    <dt class="col-5">Updated</dt>
+                    <dd class="col-7">@(_summary?.GeneratedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-3">
+    <div class="card-header bg-white">Recent Activity</div>
+    <div class="card-body">
+        <ul class="mb-0 small">
+            <li>Authentication system upgraded to persistent cookie-based login.</li>
+            <li>Admin module enabled for users and roles management.</li>
+            <li>Operational dashboard and status monitoring are available.</li>
+        </ul>
+    </div>
+</div>
+
+@code {
+    private DashboardSummaryDto? _summary;
+    private SystemInfoDto? _systemInfo;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _summary = await Http.GetFromJsonAsync<DashboardSummaryDto>("/api/dashboard/summary");
+            _systemInfo = await Http.GetFromJsonAsync<SystemInfoDto>("/api/system/info");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed record DashboardSummaryDto(int Commodities, int BudgetSources, int Facilities, int MainTransactions, DateTimeOffset GeneratedAtUtc);
+    private sealed record SystemInfoDto(string MachineName, string Environment, DateTimeOffset GeneratedAtUtc, string Runtime, string Application);
+}

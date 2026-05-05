@@ -6,9 +6,20 @@
     </div>
 
     <main>
-        <div class="top-row px-4 d-flex justify-content-between align-items-center">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            <PharmacyExtra.Web.Components.Shared.LoginDisplay />
+        <div class="top-row app-header px-4">
+            <div class="brand-block">
+                <div class="brand-logo">PX</div>
+                <div>
+                    <div class="brand-title">Pharmacy Extra</div>
+                    <small class="brand-subtitle">Enterprise Management Portal</small>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <PharmacyExtra.Web.Components.Shared.ThemeToggle />
+                <PharmacyExtra.Web.Components.Shared.NotificationsMenu />
+                <PharmacyExtra.Web.Components.Shared.LoginDisplay />
+            </div>
         </div>
 
         <article class="content px-4">

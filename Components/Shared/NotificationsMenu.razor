@@ -1,0 +1,59 @@
+<details class="menu-dropdown">
+    <summary class="btn btn-sm btn-outline-secondary position-relative">
+        🔔
+        @if (UnreadCount > 0)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                @UnreadCount
+            </span>
+        }
+    </summary>
+
+    <div class="menu-dropdown-panel card shadow-sm">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="small fw-semibold">Notifications</span>
+            <button class="btn btn-sm btn-link text-decoration-none" @onclick="MarkAllAsRead">Mark all read</button>
+        </div>
+        <ul class="list-group list-group-flush small">
+            @foreach (var item in _items)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-semibold">@item.Title</div>
+                        <div class="text-muted">@item.Message</div>
+                    </div>
+                    @if (!item.IsRead)
+                    {
+                        <span class="badge text-bg-primary">new</span>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+</details>
+
+@code {
+    private readonly List<NotificationItem> _items =
+    [
+        new("Deployment", "System upgraded to .NET 10 successfully.", false),
+        new("Security", "Cookie authentication is now active.", false),
+        new("Monitoring", "Status endpoint checks are healthy.", true)
+    ];
+
+    private int UnreadCount => _items.Count(x => !x.IsRead);
+
+    private void MarkAllAsRead()
+    {
+        foreach (var item in _items)
+        {
+            item.IsRead = true;
+        }
+    }
+
+    private sealed class NotificationItem(string title, string message, bool isRead)
+    {
+        public string Title { get; } = title;
+        public string Message { get; } = message;
+        public bool IsRead { get; set; } = isRead;
+    }
+}

@@ -1,0 +1,148 @@
+@page "/profile"
+@attribute [Authorize]
+@inject HttpClient Http
+
+<PageTitle>Profile</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="mb-0">My Profile</h1>
+        <small class="text-muted">Manage account information and preferences.</small>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white">Account</div>
+            <div class="card-body">
+                @if (_profile is null)
+                {
+                    <p>Loading account info...</p>
+                }
+                else
+                {
+                    <dl class="row mb-0 small">
+                        <dt class="col-4">Username</dt>
+                        <dd class="col-8">@_profile.Username</dd>
+
+                        <dt class="col-4">Display</dt>
+                        <dd class="col-8">@_profile.DisplayName</dd>
+
+                        <dt class="col-4">Roles</dt>
+                        <dd class="col-8">@string.Join(", ", _profile.Roles)</dd>
+                    </dl>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">Change Password</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" class="form-control" @bind="_pwd.CurrentPassword" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" @bind="_pwd.NewPassword" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" @bind="_pwd.ConfirmPassword" />
+                </div>
+
+                <button class="btn btn-primary" @onclick="ChangePasswordAsync">Update Password</button>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-header bg-white">Preferences</div>
+            <div class="card-body d-flex align-items-center gap-3">
+                <span class="small text-muted">Theme</span>
+                <PharmacyExtra.Web.Components.Shared.ThemeToggle />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ProfileDto? _profile;
+    private PasswordForm _pwd = new();
+    private string? _error;
+    private string? _success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        try
+        {
+            _profile = await Http.GetFromJsonAsync<ProfileDto>("/api/profile/me");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _error = null;
+        _success = null;
+
+        if (string.IsNullOrWhiteSpace(_pwd.CurrentPassword) || string.IsNullOrWhiteSpace(_pwd.NewPassword))
+        {
+            _error = "Current and new passwords are required.";
+            return;
+        }
+
+        if (_pwd.NewPassword != _pwd.ConfirmPassword)
+        {
+            _error = "Password confirmation does not match.";
+            return;
+        }
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/profile/change-password", new ChangePasswordRequest(_pwd.CurrentPassword, _pwd.NewPassword));
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            _success = "Password updated successfully for current session credentials.";
+            _pwd = new PasswordForm();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private sealed class PasswordForm
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private sealed record ProfileDto(string Username, string DisplayName, IReadOnlyList<string> Roles);
+    private sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+}
