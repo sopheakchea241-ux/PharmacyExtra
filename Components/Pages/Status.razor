@@ -1,0 +1,84 @@
+@page "/status"
+@inject HttpClient Http
+
+<PageTitle>Status</PageTitle>
+
+<h1>System Status</h1>
+
+<p>This page checks application and database health endpoints.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="LoadStatus">Refresh</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger" role="alert">
+        @_error
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">/health</div>
+    <div class="card-body">
+        @if (_healthJson is null)
+        {
+            <p class="text-muted">No data loaded.</p>
+        }
+        else
+        {
+            <pre>@_healthJson</pre>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">/health/db</div>
+    <div class="card-body">
+        @if (_dbHealthJson is null)
+        {
+            <p class="text-muted">No data loaded.</p>
+        }
+        else
+        {
+            <pre>@_dbHealthJson</pre>
+        }
+    </div>
+</div>
+
+@code {
+    private string? _healthJson;
+    private string? _dbHealthJson;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatus();
+    }
+
+    private async Task LoadStatus()
+    {
+        _error = null;
+        try
+        {
+            _healthJson = await Http.GetStringAsync("/health");
+        }
+        catch (Exception ex)
+        {
+            _healthJson = null;
+            _error = $"Failed to load /health: {ex.Message}";
+        }
+
+        try
+        {
+            _dbHealthJson = await Http.GetStringAsync("/health/db");
+        }
+        catch (Exception ex)
+        {
+            _dbHealthJson = null;
+            _error = string.IsNullOrWhiteSpace(_error)
+                ? $"Failed to load /health/db: {ex.Message}"
+                : _error + $" | Failed to load /health/db: {ex.Message}";
+        }
+    }
+}
