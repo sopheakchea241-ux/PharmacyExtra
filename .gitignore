@@ -1,0 +1,51 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build folders
+bin/
+obj/
+
+# NuGet
+*.nupkg
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# EF Migrations snapshot and migrations can be kept, but ignore local DB files
+*.mdf
+*.ldf
+*.db
+
+# Local appsettings for development
+appsettings.Development.json
+
+# Dotnet tools
+.tool/ 
+
+# Others
+*.DS_Store
+
+# Ignore published output
+publish/
+
+# Ignore user-specific files
+*.dotCover
+
+# Ignore JetBrains Rider caches
+.idea/
+
+# Ignore npm/yarn folders
+node_modules/
+
+# Ignore JetBrains Rider local history
+.idea.LocalHistory/
